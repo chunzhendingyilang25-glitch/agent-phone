@@ -2,6 +2,8 @@
 
 Windows 桌面程序，统一管理本机 Agent、项目和会话。电脑留在宿舍运行，人可以在手机飞书发起任务、继续会话、回答问题、批准或拒绝操作。任务完成、失败或需要操作时发送卡片；暂时断网时通知保存到本地，联网后重试。
 
+**下载 Windows x64：** [安装包](https://github.com/chunzhendingyilang25-glitch/agent-phone/releases/download/v0.3.0/Agent-Phone-Setup-0.3.0-x64.exe) · [便携 ZIP](https://github.com/chunzhendingyilang25-glitch/agent-phone/releases/download/v0.3.0/Agent-Phone-0.3.0-x64.zip) · [发行说明与校验值](https://github.com/chunzhendingyilang25-glitch/agent-phone/releases/tag/v0.3.0)
+
 ## 普通用户开始使用
 
 1. 安装 `Agent-Phone-Setup-0.3.0-x64.exe`，或解压便携 ZIP 后运行 `Agent Phone.exe`。程序自带运行环境，无需安装 Node.js、npm 或 PowerShell 7。
