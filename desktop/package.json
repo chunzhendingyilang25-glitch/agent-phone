@@ -1,0 +1,34 @@
+{
+  "name": "agent-phone",
+  "version": "0.3.0",
+  "private": true,
+  "description": "电脑上所有 Agent 与手机飞书沟通的工作台",
+  "author": "Agent Phone contributors",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.agentphone.desktop",
+    "productName": "Agent Phone",
+    "artifactName": "Agent-Phone-${version}-${arch}.${ext}",
+    "asar": true,
+    "electronDist": "../.cache/package-downloads",
+    "npmRebuild": false,
+    "directories": { "output": "../dist", "buildResources": "assets" },
+    "files": ["main.cjs", "preload.cjs", "assets/icon.png", "package.json"],
+    "extraResources": [
+      { "from": "../.cache/package-runtime", "to": "runtime", "filter": ["**/*"] },
+      { "from": "../.cache/package-runtime/node_modules", "to": "runtime/node_modules", "filter": ["**/*"] }
+    ],
+    "win": { "target": ["nsis", "zip"], "icon": "assets/icon.ico", "signExecutable": false },
+    "nsis": {
+      "artifactName": "Agent-Phone-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Agent Phone",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

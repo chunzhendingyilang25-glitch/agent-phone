@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>接入说明 · Agent Phone</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="guide-page">
+  <main class="guide-container">
+    <header class="guide-header"><a class="button" href="/">← 返回工作台</a><span>Agent Phone 0.3.0</span></header>
+    <h1>让电脑上的 Agent 与手机沟通</h1>
+    <p class="guide-lead">安装 Agent Phone，绑定自己的飞书机器人，再选择项目与 Agent。电脑保持联网运行后，就能在飞书开始任务、看结果、回答问题与批准操作。</p>
+    <nav class="guide-nav" aria-label="说明章节"><a href="#builtins">内置 Agent</a><a href="#dsh">DSH</a><a href="#terminal">命令行程序</a><a href="#json">JSON 事件</a><a href="#hook">外部通知接口</a><a href="#phone">手机操作</a></nav>
+    <section id="builtins"><h2>Codex、Claude Code 与 Cursor</h2><p>Codex 与 Claude Code 可直接在工作台或飞书选择后启动。请先在这台电脑上安装并登录对应 Agent。</p><p>在原应用里发起的任务，可在工作台「设置 → 接入原应用通知」选择程序，点击「安装所选应用的通知」。原设置会备份，之后让原应用重新加载设置。Codex 需要打开 <code>/hooks</code>，核对并信任新增的 Stop 与 PermissionRequest；Agent Phone 不会自动替你信任。</p><p>Cursor 默认接收完成通知；可选择每条 Shell 命令先在手机审批。Cursor IDE 的继续对话需要它自己的控制接口，完成通知本身不提供远程续聊。</p></section>
+    <section id="dsh"><h2>接入 DSH Desktop</h2><ol><li>保持 DSH Desktop 运行，在它的设置中进入「设置浏览器访问 → 允许在浏览器中打开」。访问范围选择「仅本机 / loopback」；出现「切换并开启」时按提示完成。</li><li>回到 Agent Phone，点「添加 Agent」，在发现的程序里选择 DSH Desktop，确认添加。</li><li>选择项目并发送任务，或在飞书主菜单中选择 DSH。DSH 的明确完成、审批和问题事件会通知到飞书；手机回应会交给原 DSH 会话。</li></ol><p>默认本机接口为 <code>http://127.0.0.1:43120</code>。DSH 不需要开放局域网访问。若访问仍被拒绝，请确认设置生效并让 DSH 重新启动 Profile。</p></section>
+    <section id="terminal"><h2>添加其他命令行 Agent</h2><p>点「添加 Agent → 可交互的命令行 Agent」，选择它的程序文件。启动参数每行填写一个，不需要添加引号。工作台会创建持续运行的终端，任务内容与后续输入通过标准输入发送。</p><p>程序退出即表示任务结束。若程序持续运行，需要在「完成与待操作识别」中填写它明确输出的文本标记。例如完成标记为 <code>[TASK_DONE]</code>，等待输入标记为 <code>[NEED_INPUT]</code>。</p><p>只有程序退出、明确的完成标记或标准事件能触发完成通知。终端没有新输出时，工作台会继续等待。仅靠输出标记无法保证所有程序的交互语义；需要准确区分审批与普通输入时，使用下方 JSON 事件。</p></section>
+    <section id="json"><h2>支持事件对接的 Agent</h2><p>选择「支持事件对接的 Agent」。程序从 stdin 接收一行一个 JSON，向 stdout 输出一行一个 JSON。普通日志可放 stderr。</p><h3>工作台发送给程序</h3><pre><code>{"type":"prompt","sessionId":"会话ID","text":"任务内容","files":[]}
+{"type":"response","id":"ask-1","value":{"optionId":"allow","text":"允许一次","source":"feishu"}}</code></pre><h3>程序发送给工作台</h3><pre><code>{"type":"output","text":"正在执行…"}
+{"type":"attention","id":"ask-1","kind":"approval","message":"是否允许执行这条命令？","choices":[{"id":"allow","label":"允许一次"},{"id":"deny","label":"拒绝"}]}
+{"type":"completed","turnId":"turn-1","text":"任务结果"}
+{"type":"error","message":"失败原因"}</code></pre><p><code>id</code> 对应同一次待操作请求；<code>turnId</code> 对应一次任务。程序收到回应后继续执行，完成时主动输出 <code>completed</code>。持续运行的进程可在下次接收新的 <code>prompt</code>。</p></section>
+    <section id="hook"><h2>已有程序的通知与回应接口</h2><p>在「添加 Agent」中选择「接收外部 Agent 通知」，为它设置名称。完成通知需要该程序调用本机事件接口；手机控制下一步需要该程序主动读取回应并执行自己的动作。</p><p>运行信息保存在当前 Windows 用户的 <code>%USERPROFILE%\.agent-phone\hub-runtime.json</code>。接口仅监听本机，外部程序从该文件读取地址与鉴权值，不要将文件内容放进日志或飞书消息。</p><h3>Node.js 示例：发出问题，读取手机回应</h3><pre><code>import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const runtime = JSON.parse(fs.readFileSync(
+  path.join(os.homedir(), '.agent-phone', 'hub-runtime.json'), 'utf8'));
+async function call(route, body) {
+  const response = await fetch(runtime.url + route, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'Content-Type': 'application/json',
+      'x-agent-phone-token': runtime.token },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
+  });
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error);
+  return value;
+}
+const state = await call('/api/state');
+const agent = state.agents.find(a =&gt; a.name === '你的 Agent 名称');
+if (!agent) throw new Error('请先在工作台添加 Agent');
+const task = { agent: agent.id, cwd: process.cwd(), session_id: 'my-session' };
+const pending = await call('/api/hooks', {
+  ...task, event: 'attention', request_id: 'ask-1',
+  title: '需要你的回复', description: '请告诉我下一步操作', kind: 'input'
+});
+let request;
+do {
+  await new Promise(resolve =&gt; setTimeout(resolve, 1000));
+  request = await call('/api/requests/' + pending.requestId);
+} while (['pending', 'responding'].includes(request.status));
+if (request.status !== 'answered') throw new Error('请求已取消或失效');
+const reply = request.response; // reply.text 或 reply.optionId
+// 将 reply 交给你的程序，执行相应动作。
+// 真正完成后再发送：
+await call('/api/hooks', {
+  ...task, event: 'completed', turn_id: 'my-turn-1',
+  last_assistant_message: '任务结果'
+});</code></pre><p>审批请求可使用 <code>kind: "approval"</code> 并附加 <code>options: [{id: "allow", label: "允许一次"}, {id: "deny", label: "拒绝"}]</code>。外部程序要明确处理允许、拒绝、超时和取消，不能把缺失的回应视为允许。每个新请求使用新的 <code>request_id</code>，每次完成使用新的 <code>turn_id</code>。</p><p>工作台或手机提交回应的接口为 <code>POST /api/requests/{id}/respond</code>，请求体为 <code>{"optionId":"allow"}</code> 或 <code>{"text":"用户回应"}</code>。已经处理或失效的请求不能再次提交。</p></section>
+    <section id="phone"><h2>在手机飞书操作</h2><ol><li>给自己的机器人发送 <code>/menu</code>，选择 Agent 与项目；目录和文件通过卡片选择。</li><li>直接发送任务。机器人会在完成、出错或需要操作时通知你。</li><li>审批时点卡片选项；问题可回复该通知消息，或点「输入回复」后发送文字。「待我操作」列出全部尚未处理的请求。</li><li>完成后点「继续这个会话」发送下一步；点「新会话」开始新的上下文。「停止当前任务」停止由工作台运行的任务。</li></ol><p>多个任务的通知都带会话信息。回复对应的通知能回到正确的任务。电脑保持联网，外出前确认不会自动睡眠；桌面程序可在设置中开启「程序运行时防止电脑睡眠」。手机无需与电脑在同一个网络。</p></section>
+    <footer class="guide-footer"><a class="button primary" href="/">返回工作台</a></footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+node_modules/
+.cache/
+.data/
+*.log
+upstream-agents-router/
+dist/
+.agent-phone/
+feishu-config.toml
+hub-runtime.json
+hub-state.json
+desktop-settings.json
+.env
+.env.*
+!.env.example
+Thumbs.db
+.DS_Store

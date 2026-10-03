@@ -1,0 +1,30 @@
+{
+  "name": "agent-phone-hub",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "start": "node hub/server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop:dev": "electron desktop",
+    "desktop:build": "npm run desktop:prepare && electron-builder --projectDir desktop --win --x64",
+    "desktop:verify": "node scripts/verify-package.mjs",
+    "desktop:smoke": "node scripts/smoke-package.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@electron/asar": "3.4.1",
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "7zip-bin": "5.2.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.287",
+    "@larksuite/channel": "0.6.1",
+    "cross-spawn": "7.0.6",
+    "node-pty": "1.1.0",
+    "qrcode": "1.5.4"
+  }
+}
